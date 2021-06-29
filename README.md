@@ -21,8 +21,8 @@ PoV will be a standardized succinct non-iteractive (offline) proof that an XRPL 
 It will contain at least the following parts:
 1. A transaction and corresponding result (metadata) whose acceptance into a ledger is the subject of this proof.
 2. Valdiation signatures over a the ledger hash of the ledger the transaction was accepted into (the tx ledger), or
-2a. An unbroken chain of ledger headers from the tx ledger to some future ledger, and
-2b. Validation signatures over that future ledger.
+- An unbroken chain of ledger headers from the tx ledger to some future ledger, and
+- Validation signatures over that future ledger.
 3. The ledger header of the tx ledger.
 4. The minimum set of nodes from the ledger's tx merkle tree to prove the transaction and its metadata appeared in the ledger.
 

@@ -192,12 +192,6 @@ const build_merkle_tree = txns =>
                 node = node.children[nibble]
                 upto++
                 continue
-                /*
-                 * RH UPTO
-                 * the key needs to be preserved here when the leaf is converted to a branch on insert
-                 * before it was not. specifically the next nibble of the KEY needs to be fetched not the merkle hash
-                 * of the branch.
-                 */
             }
             else
             {
