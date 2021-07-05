@@ -22,14 +22,20 @@ require('../xrpl-fetch-unl/fetch.js').fetch_validated_unl('https://vl.xrplf.org'
     })
     ws.on('message', raw =>
     {
+
+
+
         try
         {
             const json = JSON.parse(raw)
+        
             const key = json.validation_public_key
             if (unl[key] !== undefined)
             {
                 const val =
                     unl[key].verify_validation(json.data)
+
+                console.log(json)
 
                 if (!val._verified)
                     return
@@ -56,9 +62,11 @@ require('../xrpl-fetch-unl/fetch.js').fetch_validated_unl('https://vl.xrplf.org'
                     
                     for (k in votes[seq][hash])
                         block += votes[seq][hash][k]
+                
+        //            console.log(hash)
+                    //console.log(block)
                 }
 
-                console.log(block)
 
 
             }
