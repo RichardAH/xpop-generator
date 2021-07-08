@@ -10,8 +10,6 @@ require('../xrpl-fetch-unl/fetch.js').fetch_validated_unl('https://vl.xrplf.org'
 {
     const ws = new websocket(wsurl)
 
-    console.log(unl)
-
     const quorum = Math.ceil(Object.keys(unl).length * 0.8)
     let votes = {}
     let largest_seq = 0
@@ -28,14 +26,14 @@ require('../xrpl-fetch-unl/fetch.js').fetch_validated_unl('https://vl.xrplf.org'
         try
         {
             const json = JSON.parse(raw)
-        
+            console.log(json) 
             const key = json.validation_public_key
             if (unl[key] !== undefined)
             {
                 const val =
                     unl[key].verify_validation(json.data)
 
-                console.log(json)
+                //console.log(json)
 
                 if (!val._verified)
                     return
@@ -64,7 +62,7 @@ require('../xrpl-fetch-unl/fetch.js').fetch_validated_unl('https://vl.xrplf.org'
                         block += votes[seq][hash][k]
                 
         //            console.log(hash)
-                    //console.log(block)
+                    console.log(block)
                 }
 
 

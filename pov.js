@@ -44,7 +44,7 @@ const make_vl_bytes = len =>
     }
 }
 
-const sha512h = b => 
+const sha512h = b =>
 {
     if (typeof(b) == 'string')
         b = Buffer.from(b, 'hex')
@@ -52,21 +52,21 @@ const sha512h = b =>
 }
 
 const prefix_LWR = '4C575200'
-const prefix_SND = '534E4400' 
+const prefix_SND = '534E4400'
 const prefix_MIN = '4D494E00'
 const prefix_TXN = '54584E00'
-const hex = {0:'0', 1:'1', 2:'2', 3:'3', 4:'4', 5:'5', 6:'6', 7:'7', 
+const hex = {0:'0', 1:'1', 2:'2', 3:'3', 4:'4', 5:'5', 6:'6', 7:'7',
              8:'8', 9:'9',10:'A',11:'B',12:'C',13:'D',14:'E',15:'F'}
 
 const numToHex = (n, size) =>
-{ 
+{
     if (typeof(n) != 'string')
-        n = n.toString(16) 
+        n = n.toString(16)
     n = '0'.repeat((size*2)-n.length) + n
     return n
 }
 
-const hash_ledger = 
+const hash_ledger =
 (ledger_index, total_coins,
  parent_hash, transaction_hash, account_hash,
  parent_close_time, close_time, close_time_resolution, close_flags) =>
@@ -80,18 +80,42 @@ const hash_ledger =
     if (typeof(account_hash) != 'string')
         account_hash = account_hash.toString('hex')
 
-    return crypto.createHash('sha512').update(
-        Buffer.from(
-            prefix_LWR +
-            numToHex(ledger_index, 4) +
-            numToHex(total_coins, 8) +
-            parent_hash +
-            transaction_hash +
-            account_hash +
-            numToHex(parent_close_time, 4) +
-            numToHex(close_time, 4) +
-            numToHex(close_time_resolution, 1) +
-            numToHex(close_flags, 2))).digest().slice(0,32).toString('hex').toUpperCase()
+    if (typeof(ledger_index) == 'string')
+        ledger_index = BigInt(ledger_index)
+
+    if (typeof(total_coins) == 'string')
+        total_coins = BigInt(total_coins)
+
+    if (typeof(parent_close_time) == 'string')
+        parent_close_time = BigInt(parent_close_time)
+
+    if (typeof(close_time) == 'string')
+        close_time = BigInt(close_time)
+
+    if (typeof(close_time_resolution) == 'string')
+        close_time_resolution = BigInt(close_time_resolution)
+
+    if (typeof(close_flags) == 'string')
+        close_flags = BigInt(close_flags)
+
+    const payload =
+            prefix_LWR + 
+            numToHex(ledger_index, 4) + 
+            numToHex(total_coins, 8) + 
+            parent_hash + 
+            transaction_hash + 
+            account_hash + 
+            numToHex(parent_close_time, 4) + 
+            numToHex(close_time, 4) + 
+            numToHex(close_time_resolution, 1) + 
+            numToHex(close_flags, 1).toUpperCase()
+
+    return crypto.createHash('sha512').
+           update(Buffer.from(payload, 'hex')).
+           digest().
+           slice(0,32).
+           toString('hex').
+           toUpperCase()
 }
 
 const compute_tree = (tree, depth=0) =>
@@ -144,7 +168,7 @@ const report_error = e =>
     //console.error(e)
 }
 
-const create_tree = txns => 
+const create_tree = txns =>
 {
     let root = {children: {}, hash: null, key: '0'.repeat(64)}
 
@@ -214,7 +238,7 @@ const create_proof_from_tree = (tree, key, upto = 0) =>
         return false
 
     tree = tree.children
-   
+
     if (tree === undefined)
         return false
 
@@ -298,7 +322,7 @@ const proof_contains = (proof, tx_blob, meta, already_computed = false) =>
             return true
 
         if (typeof(proof[i]) == 'object' && proof_contains(proof[i], null, null, hash))
-            return true       
+            return true
     }
 
     return false

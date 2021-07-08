@@ -1,6 +1,7 @@
 if (process.argv.length < 3)
 {
-    console.error("Usage: " + process.argv[0].replace(/.+\//, "") + " " + process.argv[1].replace(/.+\//,"") + " txn_hash")
+    console.error("Usage: " +
+        process.argv[0].replace(/.+\//, "") + " " + process.argv[1].replace(/.+\//,"") + " txn_hash")
     process.exit(1)
 }
 
@@ -14,6 +15,7 @@ const pov_for_txn = (txnid)=>
     {
         const ws = new Websocket('wss://xrpl.ws')
         let stage = 1
+        let ledger_index = -1
         let transactions = []
         let transactions_root = ''
         let proof = null
@@ -22,7 +24,7 @@ const pov_for_txn = (txnid)=>
             ws.send('{"command":"tx","transaction":"' + txnid + '"}')
         })
 
-        ws.on('message', data => 
+        ws.on('message', data =>
         {
             const json = JSON.parse(data)
             if (!json || !json.result)
@@ -35,29 +37,45 @@ const pov_for_txn = (txnid)=>
             {
                 case 1:
                     stage = 2
-                    ws.send('{"command":"ledger", "ledger_index":"' + json.result.ledger_index + '",' +
+                    ledger_index = json.result.ledger_index
+                    ws.send('{"command":"ledger", "ledger_index":"' + ledger_index + '",' +
                             ' "transactions":true, "expand":true, "binary":true, "accounts":false}')
                     return
-                    
+
                 case 2:
                     transactions = json.result.ledger.transactions
                     proof = pov.create_proof(transactions, txnid)
-                    console.log("proof:", proof)
+                    console.log("merkle proof:")
+                    console.log(proof)
 
                     stage = 3
-                    ws.send('{"command":"ledger",  "ledger_index":"' + json.result.ledger_index + '"}')
+                    ws.send('{"command":"ledger",  "ledger_index":"' + ledger_index + '"}')
                     return
 
                 case 3:
-                    transactions_root = json.result.ledger.transaction_hash
-                    console.log("ledger's transactions_root:", transactions_root)
-                    let hash_proof = pov.hash_proof(proof)
-                    console.log("hash of proof:", hash_proof)
-                    resolve(hash_proof == transactions_root)
+                    let ledger = json.result.ledger
+                    transactions_root = ledger.transaction_hash
+                    console.log("reported txn root:", transactions_root)
+                    let computed_transactions_root = pov.hash_proof(proof)
+                    console.log("computed txn root:", computed_transactions_root)
+                    let computed_ledger_hash = pov.hash_ledger(
+                        ledger_index, ledger.total_coins,
+                        ledger.parent_hash, computed_transactions_root, ledger.account_hash,
+                        ledger.parent_close_time, ledger.close_time,
+                        ledger.close_time_resolution,
+                        ledger.close_flags)
+
+                    console.log("reported lgr hash:", ledger.hash)
+                    console.log("computed lgr hash:", computed_ledger_hash)
+                    resolve(computed_ledger_hash == ledger.hash)
             }
         })
     })
 }
 
 
-pov_for_txn(txnid).then((v)=>console.log("Verified proof:", v))
+pov_for_txn(txnid).then(v=>
+{
+    console.log("Verified proof:", v)
+    process.exit(0)
+})
