@@ -13,7 +13,7 @@ const pov_for_txn = (txnid)=>
 {
     return new Promise((resolve, reject) =>
     {
-        const ws = new Websocket('wss://xrpl.ws')
+        const ws = new Websocket('wss://xrplcluster.com')
         let stage = 1
         let ledger_index = -1
         let transactions = []
