@@ -23,6 +23,8 @@ const update_vl = ()=>{
                 resolve()
             }).catch(e =>{reject(e)})
         }
+        else
+            resolve()
     })
 }
 
@@ -159,36 +161,42 @@ app.get('/xpop/:txnid', (req, res) => {
     if (txnid.match(/^[A-F0-9]+$/) == null)
         return res.status(400).send('Invalid transaction hash')
 
-    pov_for_txn(txnid).then(output =>
+    update_vl().then(()=>
     {
+        pov_for_txn(txnid).then(output =>
+        {
 
-        pool.connect((err, psql, release) => {
-            if (err) 
-                return fail('could not connect')
-                
-            const params = [output.ledger.index, Object.keys(vl.unl)]
-            psql.query("SELECT pubkey, data FROM validations WHERE ledger = $1 AND pubkey = ANY($2);", params).then(
-            (query) =>
-            {
-                release()
-                if (!query.rows || query.rows.length < Math.ceil(params[1].length * 0.8))
-                    return fail('validations not present')
-                
-                query.rows.forEach(row =>
+            pool.connect((err, psql, release) => {
+                if (err) 
+                    return fail('could not connect')
+                    
+                const params = [output.ledger.index, Object.keys(vl.unl)]
+                psql.query("SELECT pubkey, data FROM validations WHERE ledger = $1 AND pubkey = ANY($2);", params).then(
+                (query) =>
                 {
-                    output.vdata[row.pubkey] = row.data.toString('hex')
+                    release()
+                    if (!query.rows || query.rows.length < Math.ceil(params[1].length * 0.8))
+                        return fail('validations not present')
+                    
+                    query.rows.forEach(row =>
+                    {
+                        output.vdata[row.pubkey] = row.data.toString('hex')
+                    })
+                    output.vlist = vl.vl 
+                    return res.status(200).send(JSON.stringify(output, null, 2))
+                }).catch( e=> {
+                    try {release()} catch (ee) {}
+                    console.log(e)
+                    return fail('query failed')
                 })
-                output.vlist = vl.vl 
-                return res.status(200).send(JSON.stringify(output, null, 2))
-            }).catch( e=> {
-                try {release()} catch (ee) {}
-                console.log(e)
-                return fail('query failed')
             })
+        }).catch( e=> {
+            console.log(e)
+            return fail('txn fetch failed')
         })
     }).catch( e=> {
         console.log(e)
-        return fail('txn fetch failed')
+        return fail('could not fetch vl')
     })
 })
 update_vl().then(()=>
