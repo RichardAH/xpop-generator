@@ -1,3 +1,4 @@
+const wsendpoint = 'wss://xrplcluster.com'
 const port = 8080
 const express = require('express')
 const app = express()
@@ -29,26 +30,22 @@ const update_vl = ()=>{
 }
 
 
-if (process.env['wss'] === undefined)
-{
-    console.error('must supply `wss=ws://...` env var for public xrpld websocket endpoint')
-    process.exit(1)
-}
-
 const pov_for_txn = (txnid, vl)=>
 {
     return new Promise((resolve, reject) =>
     {
-        const ws = new Websocket('wss://xrpl.ws')
+        const ws = new Websocket(wsendpoint)
         let stage = 1
         let ledger_index = -1
         let transactions = []
         let transactions_root = ''
+        let txbin = ''
+        let metabin = ''
         let proof = null
         let done = false
         ws.on('open', () =>
         {
-            ws.send('{"command":"tx","transaction":"' + txnid + '"}')
+            ws.send('{"command":"tx","binary":true,"transaction":"' + txnid + '"}')
         })
 
         ws.on('error', (e)=>
@@ -71,12 +68,15 @@ const pov_for_txn = (txnid, vl)=>
                 console.error("error fetching txn")
                 return false
             }
-
+            
             switch (stage)
             {
                 case 1:
+                    
                     stage = 2
                     ledger_index = json.result.ledger_index
+                    txbin = json.result.tx
+                    metabin = json.result.meta
                     ws.send('{"command":"ledger", "ledger_index":"' + ledger_index + '",' +
                             ' "transactions":true, "expand":true, "binary":true, "accounts":false}')
                     return
@@ -104,20 +104,23 @@ const pov_for_txn = (txnid, vl)=>
                         ws.close()
                         done = true
                         resolve({
-                            txmap: proof,
                             ledger: {
                                 index: ledger_index,
                                 coins: ledger.total_coins,
-                                parent: ledger.parent_hash,
+                                phash: ledger.parent_hash,
                                 txroot: computed_transactions_root,
                                 acroot: ledger.account_hash,
-                                pcltime: ledger.parent_close_time,
-                                cltime: ledger.close_time,
-                                clres: ledger.close_time_resolution,
-                                clflag: ledger.close_flags
+                                pclose: ledger.parent_close_time,
+                                close: ledger.close_time,
+                                cres: ledger.close_time_resolution,
+                                flags: ledger.close_flags
                             },
-                            vdata: {},
-                            vlist: {}
+                            validation: {data: {}, unl: {}},
+                            transaction: {
+                                blob: txbin,
+                                meta: metabin,
+                                proof: proof
+                            }
                         });
                     }
             }
@@ -147,7 +150,7 @@ catch (e)
 
 const pool = new Pool(config)
 
-app.get('/xpop/:txnid', (req, res) => {
+app.get('/:txnid', (req, res) => {
 
     const fail = ((res)=>{
         return (e)=>
@@ -180,9 +183,9 @@ app.get('/xpop/:txnid', (req, res) => {
                     
                     query.rows.forEach(row =>
                     {
-                        output.vdata[row.pubkey] = row.data.toString('hex')
+                        output.validation.data[row.pubkey] = row.data.toString('hex')
                     })
-                    output.vlist = vl.vl 
+                    output.validation.unl = vl.vl 
                     return res.status(200).send(JSON.stringify(output, null, 2))
                 }).catch( e=> {
                     try {release()} catch (ee) {}
@@ -201,7 +204,7 @@ app.get('/xpop/:txnid', (req, res) => {
 })
 update_vl().then(()=>
 {
-    app.listen(port, () => {
-      console.log(`POV Listening at http://localhost:${port}/xpop/:txnid`)
+    app.listen(port, '0.0.0.0', 1024, () => {
+      console.log(`POV Listening at http://0.0.0.0:${port}/:txnid`)
     })
 }).catch(e => { console.log(e) } );
