@@ -6,6 +6,7 @@ const pov = require('./pov.js')
 const Websocket = require('ws')
 const { Pool } = require('pg')
 const fs = require('fs')
+const child_process = require("child_process")
 const {fetch_validated_unl} = require('./fetch.js')
 
 let vl = {_last_fetched: 0}
@@ -186,7 +187,29 @@ app.get('/:txnid', (req, res) => {
                         output.validation.data[row.pubkey] = row.data.toString('hex')
                     })
                     output.validation.unl = vl.vl 
-                    return res.status(200).send(JSON.stringify(output, null, 2))
+                    if (req.query.gif === undefined)
+                        return res.status(200).send(JSON.stringify(output, null, 2))
+                
+                    // gif logic
+                    //
+
+                    return res.status(200).send(
+                        '<html><head>' +
+                        '<meta name="viewport" content="width=device-width, initial-scale=1.0">' +
+                        '<style>img {' +
+                        '	image-rendering: pixelated;' +
+                        '}' +
+                        'body {' +
+                        '  margin: 0;' +
+                        '	padding:1em;' +
+                        '}' +
+                        '</style></head>' +
+                        '<body><center><img src="data:image/gif;base64,' +
+                        child_process.execFileSync('./aqg', [], 
+                        {
+                            input: JSON.stringify(output)
+                        }).toString('base64') +
+                        '"></center></body>')
                 }).catch( e=> {
                     try {release()} catch (ee) {}
                     console.log(e)
