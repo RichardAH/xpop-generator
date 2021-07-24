@@ -197,7 +197,7 @@ app.get('/:txnid', (req, res) => {
                     // gif logic
                     //
                     //
-                    let gifpayload = JSON.stringify(output)
+                    let gifpayload = Buffer.from(JSON.stringify(output), 'utf-8')
                     if (binary_mode)
                         gifpayload = brotli.compress(gifpayload, true)
 
