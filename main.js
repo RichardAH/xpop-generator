@@ -8,6 +8,8 @@ const { Pool } = require('pg')
 const fs = require('fs')
 const child_process = require("child_process")
 const {fetch_validated_unl} = require('./fetch.js')
+const brotli = require('brotli')
+const yenc = require('yencode') 
 
 let vl = {_last_fetched: 0}
 
@@ -187,11 +189,18 @@ app.get('/:txnid', (req, res) => {
                         output.validation.data[row.pubkey] = row.data.toString('hex')
                     })
                     output.validation.unl = vl.vl 
-                    if (req.query.gif === undefined)
+                    if (req.query.gif === undefined && req.query.gifcomp === undefined)
                         return res.status(200).send(JSON.stringify(output, null, 2))
                 
                     // gif logic
                     //
+                    //
+                    let gifpayload = JSON.stringify(output)
+                    if (req.query.gifcomp !== undefined)
+                    {
+                        gifpayload = brotli.compress(gifpayload, true)
+                        gifpayload = yenc.encode(gifpayload, 0xFFFFF)
+                    }
 
                     return res.status(200).send(
                         '<html><head>' +
@@ -207,7 +216,7 @@ app.get('/:txnid', (req, res) => {
                         '<body><center><img src="data:image/gif;base64,' +
                         child_process.execFileSync('./aqg', [], 
                         {
-                            input: JSON.stringify(output)
+                            input: gifpayload
                         }).toString('base64') +
                         '"></center></body>')
                 }).catch( e=> {
