@@ -9,7 +9,6 @@ const fs = require('fs')
 const child_process = require("child_process")
 const {fetch_validated_unl} = require('./fetch.js')
 const brotli = require('brotli')
-const yenc = require('yencode') 
 
 let vl = {_last_fetched: 0}
 
@@ -189,6 +188,9 @@ app.get('/:txnid', (req, res) => {
                         output.validation.data[row.pubkey] = row.data.toString('hex')
                     })
                     output.validation.unl = vl.vl 
+
+                    let binary_mode = req.query.gifcomp !== undefined
+
                     if (req.query.gif === undefined && req.query.gifcomp === undefined)
                         return res.status(200).send(JSON.stringify(output, null, 2))
                 
@@ -196,11 +198,8 @@ app.get('/:txnid', (req, res) => {
                     //
                     //
                     let gifpayload = JSON.stringify(output)
-                    if (req.query.gifcomp !== undefined)
-                    {
+                    if (binary_mode)
                         gifpayload = brotli.compress(gifpayload, true)
-                        gifpayload = yenc.encode(gifpayload, 0xFFFFF)
-                    }
 
                     return res.status(200).send(
                         '<html><head>' +
@@ -214,7 +213,7 @@ app.get('/:txnid', (req, res) => {
                         '}' +
                         '</style></head>' +
                         '<body><center><img src="data:image/gif;base64,' +
-                        child_process.execFileSync('./aqg', [], 
+                        child_process.execFileSync('./aqg', (binary_mode ?  ['-', 'b'] : []), 
                         {
                             input: gifpayload
                         }).toString('base64') +
